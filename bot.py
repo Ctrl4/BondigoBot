@@ -1,34 +1,32 @@
 import telegram
 import telegram.ext
 import re
-from random import randint
+import os
 import logging
 import requests
+from random import randint
 from obtenerBondi import obtenerBondi
 from crontab import CronTab
-import os
 
 
 API_KEY = os.environ['TELEGRAM']
-OS_USER = os.environ['USER']
-cron = CronTab(user=OS_USER)
-
+cron = CronTab(user=True)
 global es_agenda
 es_agenda = False
-
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 updater = telegram.ext.Updater(API_KEY)
 dispatcher = updater.dispatcher
 
 WELCOME = 0
 CONSULTAR = 1
 AGENDAR = 2
-PEDIR_BONDI = 3
-PEDIR_PARADA = 4
-CANCEL = 5
-
+PREGUNTAR_BONDI = 3
+PREGUNTAR_PARADA = 4
+PREGUNTAR_DIAS = 5
+PREGUNTAR_HORAS = 6
+PREGUNTAR_MINUTOS = 7
+CANCEL = 8
 
 # The entry function
 def start(update_obj, context):
@@ -41,29 +39,27 @@ Opciones:
     0)Cancelar""", reply_markup=telegram.ReplyKeyboardMarkup([["1","2","0"]], one_time_keyboard=True))
     return WELCOME
 
-
 def preguntarBondi(update_obj, context):
     global bondi
     bondi = update_obj.message.text
-
     update_obj.message.reply_text(f"Pasame número de la parada. Recordá que podés obtener este dato en blablabla.com")
-
-    return PEDIR_PARADA
+    return PREGUNTAR_PARADA
 
 def preguntarParada(update_obj, context):
     global parada
+    global es_agenda
     parada = update_obj.message.text
-
     if es_agenda:
-        update_obj.message.reply_text(f"Te vamo a avisar",reply_markup=telegram.ReplyKeyboardRemove())
+        update_obj.message.reply_text(f"A partir de la hora especificada te vamos a estar alertando cada 1 minuto (max 5 minutos)",reply_markup=telegram.ReplyKeyboardRemove())
         job = cron.new(command=f'export TELEGRAM={API_KEY} && /usr/bin/python3 /home/ctrl4/mounted/ctrl4/git/BondigoBot/obtenerBondi.py  -b{bondi} -p{parada} -i{update_obj.message.chat_id}')
-        job.hour.every(1)
+        job.hour.on(horas)
+        job.minute.on(minutos)
+        job.dow.on(dias)
         cron.write()
     else:
         update_obj.message.reply_text(f"Consultando tiempo ")
         update_obj.message.reply_text(obtenerBondi(bondi, parada),reply_markup=telegram.ReplyKeyboardRemove())
-    
-
+    es_agenda = False
     return telegram.ext.ConversationHandler.END
 
 def cancel(update_obj, context):
@@ -74,40 +70,54 @@ def cancel(update_obj, context):
     )
     return telegram.ext.ConversationHandler.END
 
-
-
-
 def welcome(update_obj, context):
     if int(update_obj.message.text) == 1:
         update_obj.message.reply_text(f"Pasame número del ómnibus.")
-        return PEDIR_BONDI
+        return PREGUNTAR_BONDI
     elif int(update_obj.message.text) == 2:
         global es_agenda
         es_agenda = True
-        update_obj.message.reply_text(f"Pasame número del ómnibus")
-        return PEDIR_BONDI
+        update_obj.message.reply_text(f"""¿Qué días querés agendar?
+Para todos los días escribi: todos
+Para rango semanal por ejempĺo Lunes a viernes escribi: MON-FRI
+        """)
+        return PREGUNTAR_DIAS
     else:
         return CANCEL
 
-def agendar(update_obj, context):
-    update_obj.message.reply_text(f"Perdón viejo pero no podés agendar aún.(Soon)")
-    return start(update_obj, context)
+def preguntarDias(update_obj, context):
+    global dias
+    dias = tuple(update_obj.message.text)
+    update_obj.message.reply_text(f"¿A que hora querés que te empecemos avisar? (Entre 0 y 23)")
+    return PREGUNTAR_HORAS
+
+def preguntarHoras(update_obj, context):
+    global horas
+    horas = update_obj.message.text
+    update_obj.message.reply_text(f"Pasame minutos (Entre 0 y 59)")
+    return PREGUNTAR_MINUTOS
+
+def preguntarMinutos(update_obj, context):
+    global minutos
+    minutos = update_obj.message.text
+    update_obj.message.reply_text(f"Pasame número del ómnibus.")
+    return PREGUNTAR_BONDI
 
 
 yes_no_regex = re.compile(r'^(yes|no|y|n)$', re.IGNORECASE)
-
 handler = telegram.ext.ConversationHandler(
       entry_points=[telegram.ext.CommandHandler('start', start)],
       states={
             WELCOME: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), welcome)],
-            PEDIR_BONDI: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), preguntarBondi)],
-            PEDIR_PARADA: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), preguntarParada)],
-            AGENDAR: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), agendar)],
+            PREGUNTAR_BONDI: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), preguntarBondi)],
+            PREGUNTAR_PARADA: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(r'^\d+$'), preguntarParada)],
+            PREGUNTAR_DIAS: [telegram.ext.MessageHandler(telegram.ext.Filters.all, preguntarDias)],
+            PREGUNTAR_HORAS: [telegram.ext.MessageHandler(telegram.ext.Filters.all, preguntarHoras)],
+            PREGUNTAR_MINUTOS: [telegram.ext.MessageHandler(telegram.ext.Filters.all, preguntarMinutos)],
             CANCEL: [telegram.ext.MessageHandler(telegram.ext.Filters.regex(yes_no_regex), cancel)],
       },
       fallbacks=[telegram.ext.CommandHandler('cancel', cancel)],
       )
-
 dispatcher.add_handler(handler)
 updater.start_polling()
 updater.idle()
