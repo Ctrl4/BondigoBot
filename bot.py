@@ -8,13 +8,17 @@ from obtenerBondi import obtenerBondi
 from crontab import CronTab
 import os
 
-cron = CronTab(user='ctrl4')
+
+API_KEY = os.environ['TELEGRAM']
+OS_USER = os.environ['USER']
+cron = CronTab(user=OS_USER)
+
+global es_agenda
 es_agenda = False
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-API_KEY = os.environ['TELEGRAM']
 updater = telegram.ext.Updater(API_KEY)
 dispatcher = updater.dispatcher
 
@@ -51,13 +55,14 @@ def preguntarParada(update_obj, context):
     parada = update_obj.message.text
 
     if es_agenda:
-        update_obj.message.reply_text(f"Te vamo a avisar")
-        job = cron.new(command=f'/usr/bin/python3 /home/ctrl4/mounted/ctrl4/git/BondigoBot/obtenerBondi.py  -b{bondi} -p{parada}')
+        update_obj.message.reply_text(f"Te vamo a avisar",reply_markup=telegram.ReplyKeyboardRemove())
+        job = cron.new(command=f'export TELEGRAM={API_KEY} && /usr/bin/python3 /home/ctrl4/mounted/ctrl4/git/BondigoBot/obtenerBondi.py  -b{bondi} -p{parada} -i{update_obj.message.chat_id}')
         job.hour.every(1)
         cron.write()
     else:
         update_obj.message.reply_text(f"Consultando tiempo ")
         update_obj.message.reply_text(obtenerBondi(bondi, parada),reply_markup=telegram.ReplyKeyboardRemove())
+    
 
     return telegram.ext.ConversationHandler.END
 

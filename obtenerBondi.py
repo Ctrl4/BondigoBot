@@ -1,11 +1,16 @@
 import requests
 from argparse import ArgumentParser
+import os
+
+
 
 parser = ArgumentParser(description="Small script to check bondi's schedule. Some useful Paradas 3048 (L), 2664 (C)")
 parser.add_argument('-p','--parada',action='store',dest='parada',default='2664')
 parser.add_argument('-b','--bondi',action='store',dest='bondi')
+parser.add_argument('-i','--chat_id',action='store', dest='chat_id')
 args = parser.parse_args()
 
+API_KEY = os.environ['TELEGRAM']
 
 
 def obtenerBondi(bondi,parada=3048):
@@ -19,4 +24,8 @@ def obtenerBondi(bondi,parada=3048):
                 return ("El %s no está en camino pero se estima que pasa en %s minutos" % (i['linea'],i['minutos']))
 
 if args.bondi:
-    print(obtenerBondi(args.bondi, args.parada))
+    result = obtenerBondi(args.bondi, args.parada)
+    result = requests.utils.quote(result)
+    telegram_url = f'https://api.telegram.org/bot{API_KEY}/sendMessage?chat_id={args.chat_id}&text={result}'
+    print(telegram_url)
+    requests.get(telegram_url)
