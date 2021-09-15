@@ -40,31 +40,35 @@ Opciones:
 
 
 def preguntarbondi(update_obj, context):
-    context.user_data['bondi'] = str(update_obj.message.text)
+    context.chat_data['bondi'] = str(update_obj.message.text)
     update_obj.message.reply_text(f"Pasame número de la parada. Recordá que podés obtener este dato en blablabla.com")
     return PREGUNTAR_PARADA
 
 
 def preguntarparada(update_obj, context):
-    context.user_data['parada'] = str(update_obj.message.text)
+    context.chat_data['parada'] = str(update_obj.message.text)
 
-    bondi = context.user_data['bondi']
-    parada = context.user_data['parada']
-    es_agenda = context.user_data['es_agenda']
+    bondi = context.chat_data['bondi']
+    parada = context.chat_data['parada']
+    es_agenda = context.chat_data['es_agenda']
 #    breakpoint()
     if es_agenda:
-        horas = context.user_data['horas']
-        minutos = context.user_data['minutos']
-        dias = context.user_data['dias']
-        update_obj.message.reply_text(f"A partir de la hora especificada te vamos a estar alertando cada 1 minuto (max 5 minutos)",reply_markup=telegram.ReplyKeyboardRemove())
+        horas = context.chat_data['horas']
+        minutos = context.chat_data['minutos']
+        dias = context.chat_data['dias']
         job = cron.new(command=f"export TELEGRAM={API_KEY} && /usr/bin/python3 /home/ctrl4/mounted/ctrl4/git/BondigoBot/obtenerBondi.py  -b{bondi} -p{parada} -i{update_obj.message.chat_id}")
         job.hour.on(horas)
         job.minute.on(minutos)
-        job.dow.on(dias)
+        job.dow.on(*dias)
         cron.write()
+        update_obj.message.reply_text(f"""Quedó configurada la alarma para el {bondi} en la parada {parada} con los siguientes datos:
+Hora: {horas}:{minutos}
+Dias: {dias}""",
+                                      reply_markup=telegram.ReplyKeyboardRemove())
     else:
         update_obj.message.reply_text(f"Consultando tiempo ")
-        update_obj.message.reply_text(obtenerbondi(bondi, parada), reply_markup=telegram.ReplyKeyboardRemove())
+        update_obj.message.reply_text(obtenerbondi(bondi, parada),
+                                      reply_markup=telegram.ReplyKeyboardRemove())
     return telegram.ext.ConversationHandler.END
 
 
@@ -72,41 +76,52 @@ def cancel(update_obj, context):
     # get the user's first name
     first_name = update_obj.message.from_user['first_name']
     update_obj.message.reply_text(
-        f"Okay, no question for you then, take care, {first_name}!", reply_markup=telegram.ReplyKeyboardRemove()
+        f"Okay, no question for you then, take care, {first_name}!",
+        reply_markup=telegram.ReplyKeyboardRemove()
     )
     return telegram.ext.ConversationHandler.END
 
 
 def welcome(update_obj, context):
-    context.user_data['es_agenda'] = False
+    context.chat_data['es_agenda'] = False
     if int(update_obj.message.text) == 1:
-        update_obj.message.reply_text(f"Pasame número del ómnibus.")
+        update_obj.message.reply_text(f"Pasame número del ómnibus.",
+                                      reply_markup=telegram.ReplyKeyboardRemove())
         return PREGUNTAR_BONDI
     elif int(update_obj.message.text) == 2:
-        context.user_data["es_agenda"] = True
+        context.chat_data["es_agenda"] = True
         update_obj.message.reply_text(f"""¿Qué días querés agendar?
-Para todos los días escribi: todos
-Para rango semanal por ejempĺo Lunes a viernes escribi: MON-FRI
-        """)
+Algunos ejemplos:
+0 = Domingo,
+1 = Lunes,
+2 = Martes,
+3 = Miércoles,
+4 = Jueves,
+5 = Viernes,
+6 = Sábado
+
+Si querés distintos días a la semana podés poner cada número separado por coma. Es decir:
+# Lunes, Miercoles y Viernes = 1,3,5
+        """, reply_markup=telegram.ReplyKeyboardRemove())
         return PREGUNTAR_DIAS
     else:
         return CANCEL
 
 
 def preguntarDias(update_obj, context):
-    context.user_data['dias'] = tuple(update_obj.message.text)
+    context.chat_data['dias'] = list(map(int, update_obj.message.text.split(",")))
     update_obj.message.reply_text(f"¿A que hora querés que te empecemos avisar? (Entre 0 y 23)")
     return PREGUNTAR_HORAS
 
 
 def preguntarHoras(update_obj, context):
-    context.user_data['horas'] = update_obj.message.text
+    context.chat_data['horas'] = update_obj.message.text
     update_obj.message.reply_text(f"Pasame minutos (Entre 0 y 59)")
     return PREGUNTAR_MINUTOS
 
 
 def preguntarMinutos(update_obj, context):
-    context.user_data['minutos'] = update_obj.message.text
+    context.chat_data['minutos'] = update_obj.message.text
     update_obj.message.reply_text(f"Pasame número del ómnibus.")
     return PREGUNTAR_BONDI
 

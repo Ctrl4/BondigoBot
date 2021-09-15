@@ -16,11 +16,17 @@ def obtenerbondi(bondi, parada=3048):
     cabezales = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 5.1.1; SM-J320M Build/LMY47V; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/70.0.3538.64 Mobile Safari/537.36'}
     r = requests.get(url, headers=cabezales)
+
+    str_minutos = "minutos"
     for i in r.json():
         if i['linea'] == bondi:
-            return f"El {i['linea']} está a punto de pasar en {i['minutos']} minutos"
+            if int(i['minutos']) == 1:
+                str_minutos = "minuto"
+            return f"El {i['linea']} está a punto de pasar en {i['minutos']} {str_minutos}"
         elif i['linea'] == bondi and i['real'] is False:
             return "El {i['linea']} no está en camino pero se estima que pasa en {i['minutos']} minutos"
+        else:
+            return f"Hubo un error al obtener la información del omnibus {bondi}. Intente nuevamente."
 
 
 if args.bondi:
