@@ -25,8 +25,8 @@ def obtenerbondi(bondi, parada=3048):
             return f"El {i['linea']} está a punto de pasar en {i['minutos']} {str_minutos}"
         elif i['linea'] == bondi and i['real'] is False:
             return "El {i['linea']} no está en camino pero se estima que pasa en {i['minutos']} minutos"
-        else:
-            return f"Hubo un error al obtener la información del omnibus {bondi}. Intente nuevamente."
+
+    return f"Hubo un error al obtener la información del omnibus {bondi}. Intente nuevamente."
 
 
 if args.bondi:

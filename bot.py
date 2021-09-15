@@ -30,7 +30,7 @@ CANCEL = 8
 # The entry function
 def start(update_obj, context):
     update_obj.message.reply_text("""¡Hola! Este Bot te ayudará a saber a que hora pasa tu próximo ómnibus.
-¡En un futuro hasta podrás agendar alertar para saber cuando pasa ese ómnibus que esperás todos los días a la misma hora!
+Hasta podrás agendar alertar para saber cuando pasa ese ómnibus que esperás todos los días a la misma hora!
 
 Opciones:
     1)Consultar
@@ -41,7 +41,8 @@ Opciones:
 
 def preguntarbondi(update_obj, context):
     context.chat_data['bondi'] = str(update_obj.message.text)
-    update_obj.message.reply_text(f"Pasame número de la parada. Recordá que podés obtener este dato en blablabla.com")
+    update_obj.message.reply_text(f"Pasame número de la parada.")
+    update_obj.message.reply_text(f" Estamos trabajando en mejorar la obtención de este dato. Mandame un MD que te lo consigo: @ctrl4")
     return PREGUNTAR_PARADA
 
 
@@ -65,6 +66,7 @@ def preguntarparada(update_obj, context):
 Hora: {horas}:{minutos}
 Dias: {dias}""",
                                       reply_markup=telegram.ReplyKeyboardRemove())
+        update_obj.message.reply_text(f"""Por lo pronto no se puede eliminar la agenda desde el bot. Si querés dejar de recibirlas, mandame un MD @ctrl4.""")
     else:
         update_obj.message.reply_text(f"Consultando tiempo ")
         update_obj.message.reply_text(obtenerbondi(bondi, parada),
