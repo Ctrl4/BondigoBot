@@ -8,7 +8,9 @@ from crontab import CronTab
 
 from obtenerBondi import obtenerbondi
 
+
 API_KEY = os.environ['TELEGRAM']
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 cron = CronTab(user=True)
 es_agenda = False
 logging.basicConfig(level=logging.DEBUG,
@@ -57,7 +59,7 @@ def preguntarparada(update_obj, context):
         horas = context.chat_data['horas']
         minutos = context.chat_data['minutos']
         dias = context.chat_data['dias']
-        job = cron.new(command=f"export TELEGRAM={API_KEY} && /usr/bin/python3 /home/ctrl4/mounted/ctrl4/git/BondigoBot/obtenerBondi.py  -b{bondi} -p{parada} -i{update_obj.message.chat_id}")
+        job = cron.new(command=f"export TELEGRAM={API_KEY} && /usr/bin/python3 {BASE_DIR}/obtenerBondi.py  -b{bondi} -p{parada} -i{update_obj.message.chat_id}")
         job.hour.on(horas)
         job.minute.on(minutos)
         job.dow.on(*dias)
